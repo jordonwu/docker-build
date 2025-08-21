@@ -28,8 +28,9 @@ SNAME="$(basename "$(test -L "$0" && readlink "$0" || echo "$0")")"
 
 # check for directory architecture
 YOCTODIR="${SDIR}"
-IMAGE="coldnew/yocto-build"
-CONTAINER="yocto-build"
+IMAGE="jordonwu/docker-build"
+TAG="ubuntu-22.04"
+CONTAINER="docker-build"
 DOCKER_ARGS=""
 
 ############################################################
@@ -62,26 +63,26 @@ FUNCDOC
 function read_config {
     : << FUNCDOC
 
-This function source the ~/.yocto-build.sh to modify some variable of this script.
+This function source the ~/.docker-build.sh to modify some variable of this script.
 
 The variables supported are:
 
   IMAGE
 
-     The docker image you want to use, default: coldnew/yocto-build
+     The docker image you want to use, default: jordonwu/docker-build
 
      example:
 
-       IMAGE="coldnew/yocto-build"
+       IMAGE="jordonwu/docker-build"
 
 
   CONTAINER
 
-     The docker container name you use, default: yocto-build
+     The docker container name you use, default: docker-build
 
      example:
 
-       CONTAINER="yocto-build"
+       CONTAINER="docker-build"
 
   DOCKER_ARGS
 
@@ -93,15 +94,15 @@ The variables supported are:
 
 FUNCDOC
 
-    if [ -e "${HOME}/.yocto-build.sh" ]; then
-        INFO "Read config from: ${HOME}/.yocto-build.sh"
-        source "${HOME}/.yocto-build.sh"
+    if [ -e "${HOME}/.docker-build.sh" ]; then
+        INFO "Read config from: ${HOME}/.docker-build.sh"
+        source "${HOME}/.docker-build.sh"
 
-        if [ "$IMAGE" != "coldnew/yocto-build" ]; then
+        if [ "$IMAGE" != "jordonwu/docker-build" ]; then
             INFO "CONTAINER: $CONTAINER"
         fi
 
-        if [ "$CONTAINER" != "yocto-build" ]; then
+        if [ "$CONTAINER" != "docker-build" ]; then
             INFO "CONTAINER: $CONTAINER"
         fi
 
@@ -110,7 +111,7 @@ FUNCDOC
         fi
 
     else
-        INFO "No config file ${HOME}/.yocto-build.sh to read!"
+        INFO "No config file ${HOME}/.docker-build.sh to read!"
     fi
 }
 
@@ -123,22 +124,22 @@ Arguments:
 
     -a, --attach    : attach to current runing container
     -s, --shell     : spawn a new shell to current container
-    -w, --workdir   : yocto workspace to shared with docker container
+    -w, --workdir   : docker_build workspace to shared with docker-build container
     -r, --rm        : remove current working container
     -u, --upgrade   : upgrade this script
-    -p, --pull      : pull new docker container image
+    -p, --pull      : pull new docker-build container image
     -h, --help      : show this help info
 
 Description:
 
-    The first time you run this script, you should specify yor
-    yocto project directory like following:
+    The first time you run this script, you should specify your
+    docker_build project directory like following:
 
-        $0 --workdir /home/coldnew/poky
+        $0 --workdir /home/jordonwu/poky
 
     This script will help you to pull the docker image and mount
-    the /home/coldnew/poky to container's /yocto directory, and
-    you can build you yocto in this container.
+    the /home/jordonwu/poky to container's /docker-build directory, and
+    you can build you docker in this container.
 
     If you want to attach current running shell, you can use:
 
@@ -156,7 +157,7 @@ Description:
 
         $0 --upgrade
 
-    To pull the new docker container image, type:
+    To pull the new docker-build container image, type:
 
         $0 --pull
 
@@ -184,14 +185,14 @@ do
     case "$1" in
     -u | --upgrade)
         INFO "Upgrade script $NAME"
-        curl https://raw.githubusercontent.com/coldnew/docker-yocto/master/yocto-build.sh > /tmp/$SNAME
+        curl https://raw.githubusercontent.com/jordonwu/docker-build/master/docker-build.sh > /tmp/$SNAME
         mv /tmp/$SNAME $SDIR/$SNAME
         chmod +x $SDIR/$SNAME
         exit $?
         ;;
     -p | --pull)
-        INFO "Pull new image: $IMAGE"
-        docker pull $IMAGE
+        INFO "Pull new image: $IMAGE:$TAG"
+        docker pull $IMAGE:$TAG
         exit $?
         ;;
     -h | --help)
@@ -238,7 +239,7 @@ do
             USER=$(whoami)
             read_config
             docker run -it \
-                   --volume="$YOCTODIR:/yocto" \
+                   --volume="$YOCTODIR:/yocto-build" \
                    --volume="${HOME}/.ssh:/home/${USER}/.ssh" \
                    --volume="${HOME}/.gitconfig:/home/${USER}/.gitconfig" \
                    --volume="/etc/localtime:/etc/localtime:ro" \
@@ -249,8 +250,9 @@ do
                    --env=HOST_GID=$(id -g) \
                    --env=USER=${USER} \
                    $(eval echo ${DOCKER_ARGS}) \
-                   --name=$CONTAINER \
-                   $IMAGE
+				   --name=$CONTAINER \
+                   --net=host \
+                   $IMAGE:$TAG
         fi
         exit $?
         ;;
